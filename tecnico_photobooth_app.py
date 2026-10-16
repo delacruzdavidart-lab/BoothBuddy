@@ -18,9 +18,28 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 2. Barra lateral - Configuración y accesos
+# 2. Obtención de API Key (desde st.secrets o la barra lateral)
+api_key = None
+if "GEMINI_API_KEY" in st.secrets:
+    api_key = st.secrets["GEMINI_API_KEY"]
+
+# Barra lateral - Configuración y accesos
 st.sidebar.title("⚙️ Configuración del Técnico")
-api_key = st.sidebar.text_input("Clave API de Gemini:", type="password", help="Consíguela gratis en Google AI Studio")
+
+sidebar_key = st.sidebar.text_input(
+    "Clave API de Gemini:", 
+    value=api_key if api_key else "", 
+    type="password", 
+    help="Consíguela gratis en Google AI Studio"
+)
+
+if sidebar_key:
+    api_key = sidebar_key
+
+if api_key:
+    st.sidebar.success("✅ API Key cargada")
+else:
+    st.sidebar.warning("⚠️ Ingresa tu API Key de Gemini o configúrala en st.secrets")
 
 st.sidebar.markdown("---")
 st.sidebar.subheader("📱 Soporte Humano Directo")
@@ -114,27 +133,32 @@ if prompt_to_process:
         st.chat_message("user").write(user_input)
 
     if api_key:
-        genai.configure(api_key=api_key)
-        # Bucle con fallback de modelos para evitar errores 404 de versión
-        model_candidates = ["gemini-2.0-flash", "gemini-1.5-flash-latest", "gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro"]
-        bot_reply = None
-        last_err = None
+        try:
+            genai.configure(api_key=api_key)
+            
+            # Intentar generar respuesta con fallback automático de modelos válidos
+            model_candidates = ["gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-2.0-flash", "gemini-1.5-pro"]
+            bot_reply = None
+            last_error = None
 
-        for model_name in model_candidates:
-            try:
-                model = genai.GenerativeModel(model_name, system_instruction=SYSTEM_PROMPT)
-                response = model.generate_content(prompt_to_process)
-                if response and response.text:
+            for m_name in model_candidates:
+                try:
+                    model = genai.GenerativeModel(m_name, system_instruction=SYSTEM_PROMPT)
+                    response = model.generate_content(prompt_to_process)
                     bot_reply = response.text
                     break
-            except Exception as e:
-                last_err = e
+                except Exception as e:
+                    last_error = e
+                    continue
+            
+            if not bot_reply:
+                bot_reply = f"❌ Error de conexión con Gemini API: {str(last_error)}"
 
-        if not bot_reply:
-            bot_reply = f"❌ Error de conexión con Gemini API: {str(last_err)}\n\n*Tip*: Verifica que tu API Key sea válida y esté activa en Google AI Studio."
+        except Exception as e:
+            bot_reply = f"❌ Error de configuración con Gemini API: {str(e)}"
     else:
         bot_reply = f"ℹ️ **Respuesta del Técnico (Modo demostración base de datos)**:\n\n"
-        bot_reply += f"Para consultas libres con la IA, ingresa tu API Key en la barra izquierda.\n\n"
+        bot_reply += f"Para consultas libres con la IA, ingresa tu API Key en la barra izquierda o configúrala en Secrets.\n\n"
         bot_reply += f"**Pasos recomendados para '{prompt_to_process}'**:\n"
         bot_reply += "1. **Conexiones**: Verifica que el cable USB vaya directo al equipo (sin hubs) y que la luz de estado esté en verde estable.\n"
         bot_reply += "2. **Reinicio de Spooler**: Abre la consola de Windows (`cmd`) como administrador y ejecuta `net stop spooler` y luego `net start spooler`.\n"
