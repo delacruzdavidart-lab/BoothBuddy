@@ -1,6 +1,5 @@
 import streamlit as st
 import google.generativeai as genai
-import urllib.parse
 
 # 1. Configuración de la página
 st.set_page_config(
@@ -10,66 +9,55 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Estilo personalizado en CSS
-st.markdown("""
+st.markdown('''
     <style>
     .main-title { font-size: 2.6rem; color: #FF007F; font-weight: 800; text-align: center; }
     .sub-title { font-size: 1.2rem; color: #4A4A4A; text-align: center; margin-bottom: 25px; }
     </style>
-""", unsafe_allow_html=True)
+''', unsafe_allow_html=True)
 
-# 2. Obtención de API Key (desde st.secrets o la barra lateral)
-api_key = None
-if "GEMINI_API_KEY" in st.secrets:
-    api_key = st.secrets["GEMINI_API_KEY"]
+# 2. Configuración de la API Key
+api_key = ""
+try:
+    if "GEMINI_API_KEY" in st.secrets:
+        api_key = st.secrets["GEMINI_API_KEY"]
+except Exception:
+    pass
 
-# Barra lateral - Configuración y accesos
-st.sidebar.title("⚙️ Configuración del Técnico")
-
-sidebar_key = st.sidebar.text_input(
-    "Clave API de Gemini:", 
-    value=api_key if api_key else "", 
-    type="password", 
+st.sidebar.title("⚙️ Configuración")
+user_key_input = st.sidebar.text_input(
+    "Clave API de Gemini:",
+    value=api_key,
+    type="password",
     help="Consíguela gratis en Google AI Studio"
 )
 
-if sidebar_key:
-    api_key = sidebar_key
+if user_key_input:
+    api_key = user_key_input
 
-if api_key:
-    st.sidebar.success("✅ API Key cargada")
+if not api_key:
+    st.sidebar.warning("⚠️ Ingresa tu API Key para activar la Inteligencia Artificial.")
 else:
-    st.sidebar.warning("⚠️ Ingresa tu API Key de Gemini o configúrala en st.secrets")
+    st.sidebar.success("✅ API Key lista.")
 
 st.sidebar.markdown("---")
 st.sidebar.subheader("📱 Soporte Humano Directo")
-whatsapp_num = st.sidebar.text_input("Número WhatsApp Técnico (con código de país):", value="5210000000000", help="Ejemplo: 521XXXXXXXXXX")
+whatsapp_num = st.sidebar.text_input("Número WhatsApp Técnico:", value="5210000000000")
 
-wa_custom_msg = urllib.parse.quote("¡Hola! Necesito soporte técnico humano urgente para mi evento de Photobooth.")
-base_wa = "https://" + "wa.me/"
-wa_url = f"{base_wa}{whatsapp_num}?text={wa_custom_msg}"
+p = "https://" + "wa.me/"
+wa_url = f"{p}{whatsapp_num}?text=Hola,%20necesito%20soporte%20tecnico"
 
-st.sidebar.markdown(f'''
-<a href="{wa_url}" target="_blank" style="text-decoration: none;">
-    <div style="background-color: #25D366; color: white; padding: 12px; border-radius: 8px; text-align: center; font-weight: bold;">
-        💬 Contactar Técnico Humano por WhatsApp
-    </div>
-</a>
-''', unsafe_allow_html=True)
+st.sidebar.markdown(f"[💬 Contactar por WhatsApp]({wa_url})")
 
 st.sidebar.markdown("---")
 st.sidebar.subheader("🛠️ Cobertura Técnica")
-st.sidebar.markdown("""
-- **Impresoras**: DNP (RX1, DS620), Mitsubishi, Selphy (Ribbon, Spooler, Cortes 2").
-- **Cámaras**: Canon, Nikon, Sony (Live View, Error 70/80, Camera Busy).
-- **Software**: Snappic, Breeze Booth, DSLRBooth, LumaBooth, LA Photo Party.
-- **Iluminación**: Flashes Godox, Triggers e Iluminación LED.
-- **Redes e iPad**: AirPrint, Print Server, Hotspots de eventos.
-""")
+st.sidebar.markdown('''
+- **Impresoras**: DNP (RX1, DS620), Mitsubishi, Selphy.
+- **Cámaras**: Canon, Nikon, Sony.
+- **Software**: Snappic, Breeze Booth, DSLRBooth, LumaBooth.
+- **Iluminación**: Flashes Godox.
+''')
 
-st.sidebar.info("💡 **Tip rápido**: Si la impresora no reacciona en Windows, reinicia el *Print Spooler* ejecutando `net stop spooler` y `net start spooler` en CMD.")
-
-# 3. Encabezado principal
 st.markdown("<h1 class='main-title'>🛠️ Técnico Virtual Photobooth</h1>", unsafe_allow_html=True)
 st.markdown("<p class='sub-title'>Asistente IA de Diagnóstico y Solución Inmediata de Fallas en Eventos</p>", unsafe_allow_html=True)
 
@@ -81,8 +69,7 @@ col4.metric("⚡ Sincronización", "Flashes & Triggers Godox")
 
 st.markdown("---")
 
-# 4. Prompt de Sistema de la Base de Datos
-SYSTEM_PROMPT = """
+SYSTEM_PROMPT = '''
 Eres el Técnico Virtual Experto en Photobooths (Cabinas de fotos, Espejos Mágicos, Plataformas 360).
 Tu objetivo es ayudar a operadores de eventos a resolver fallas técnicas de forma rápida, directa, práctica y cordial.
 
@@ -91,21 +78,19 @@ Reglas clave de respuesta:
 2. Para IMPRESORAS (DNP, Selphy, Mitsubishi):
    - Verificar encendido (LED verde), cable USB directo al PC (sin hub).
    - Para error 'Ribbon End' o Papel: recolocar consumibles, tensar cinta, limpiar sensores y reiniciar.
-   - Para impresiones lentas o atascadas: vaciar cola de impresión o reiniciar Print Spooler (`net stop spooler` / `net start spooler`).
+   - Para impresiones lentas o atascadas: vaciar cola de impresión o reiniciar Print Spooler.
 3. Para CÁMARAS (Canon/Nikon/Sony):
    - Para Live View negro o 'Camera Busy': poner modo Manual (M), cerrar programas como EOS Utility, reconectar USB directo.
    - Para apagos o sobrecalentamiento: recomendar batería ficticia (dummy battery) y desactivar ahorro de energía.
 4. Para SOFTWARE (Snappic, Breeze, DSLRBooth, LumaBooth):
    - Verificar si 'Photo Booth Print Server' está activo, comprobar red Wi-Fi e IP, verificar permisos en iPad/PC.
-"""
+'''
 
-# 5. Historial de Chat
 if "messages" not in st.session_state:
     st.session_state["messages"] = [
-        {"role": "assistant", "content": "¡Hola! Soy tu **Técnico Virtual de Photobooth**. ¿Qué problema o error estás teniendo en tu evento? (Ej: *'Mi DNP RX1 no imprime'*, *'Live View negro en DSLRBooth'*, *'Error Ribbon End'*)."}
+        {"role": "assistant", "content": "¡Hola! Soy tu **Técnico Virtual de Photobooth**. ¿Qué problema o error estás teniendo en tu evento?"}
     ]
 
-# Botones de consulta rápida
 st.subheader("⚡ Accesos Rápidos de Diagnóstico")
 q1, q2, q3, q4 = st.columns(4)
 
@@ -119,11 +104,9 @@ if q3.button("🎗️ Error 'Ribbon End'"):
 if q4.button("📶 iPad no conecta al servidor"):
     quick_query = "El iPad con Snappic / Breeze no detecta el servidor de impresión en la red del evento."
 
-# Mostrar mensajes anteriores
 for msg in st.session_state.messages:
     st.chat_message(msg["role"]).write(msg["content"])
 
-# Entrada de usuario
 user_input = st.chat_input("Escribe tu falla técnica aquí...")
 prompt_to_process = user_input or quick_query
 
@@ -132,40 +115,44 @@ if prompt_to_process:
         st.session_state.messages.append({"role": "user", "content": user_input})
         st.chat_message("user").write(user_input)
 
+    bot_reply = ""
     if api_key:
         try:
             genai.configure(api_key=api_key)
             
-            # Intentar generar respuesta con fallback automático de modelos válidos
-            model_candidates = ["gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-2.0-flash", "gemini-1.5-pro"]
-            bot_reply = None
-            last_error = None
+            # Autodetección dinámica de modelo activo
+            model_name = None
+            try:
+                models_list = genai.list_models()
+                available = [m.name for m in models_list if 'generateContent' in m.supported_generation_methods]
+                if available:
+                    for pref in ['models/gemini-1.5-flash', 'models/gemini-1.5-flash-latest', 'models/gemini-2.0-flash-exp', 'models/gemini-1.5-pro']:
+                        if pref in available:
+                            model_name = pref
+                            break
+                    if not model_name:
+                        model_name = available[0]
+            except Exception:
+                pass
 
-            for m_name in model_candidates:
-                try:
-                    model = genai.GenerativeModel(m_name, system_instruction=SYSTEM_PROMPT)
-                    response = model.generate_content(prompt_to_process)
-                    bot_reply = response.text
-                    break
-                except Exception as e:
-                    last_error = e
-                    continue
-            
-            if not bot_reply:
-                bot_reply = f"❌ Error de conexión con Gemini API: {str(last_error)}"
+            if not model_name:
+                model_name = 'gemini-1.5-flash'
+
+            model = genai.GenerativeModel(model_name=model_name, system_instruction=SYSTEM_PROMPT)
+            response = model.generate_content(prompt_to_process)
+            bot_reply = response.text
 
         except Exception as e:
-            bot_reply = f"❌ Error de configuración con Gemini API: {str(e)}"
+            bot_reply = f"❌ Error al consultar la API de Gemini: {str(e)}\n\n*Tip: Revisa que la API Key de Google AI Studio sea válida y esté activa.*"
     else:
         bot_reply = f"ℹ️ **Respuesta del Técnico (Modo demostración base de datos)**:\n\n"
-        bot_reply += f"Para consultas libres con la IA, ingresa tu API Key en la barra izquierda o configúrala en Secrets.\n\n"
+        bot_reply += f"Para respuestas personalizadas con la IA, ingresa tu API Key en la barra lateral izquierda.\n\n"
         bot_reply += f"**Pasos recomendados para '{prompt_to_process}'**:\n"
         bot_reply += "1. **Conexiones**: Verifica que el cable USB vaya directo al equipo (sin hubs) y que la luz de estado esté en verde estable.\n"
         bot_reply += "2. **Reinicio de Spooler**: Abre la consola de Windows (`cmd`) como administrador y ejecuta `net stop spooler` y luego `net start spooler`.\n"
         bot_reply += "3. **Software**: Confirma que el *Photo Booth Print Server* esté ejecutándose y la impresora esté seleccionada como predeterminada.\n"
         bot_reply += "4. **Cámara**: Asegúrate de tener la rueda en modo Manual (M), enfoque en Manual o fijo, y cerrar programas secundarios."
 
-    # Opción de escalar a WhatsApp al final de la respuesta
     bot_reply += f"\n\n---\n🆘 **¿No se solucionó el problema?** [Contacta al Soporte Humano por WhatsApp]({wa_url})"
 
     with st.chat_message("assistant"):
