@@ -114,14 +114,24 @@ if prompt_to_process:
         st.chat_message("user").write(user_input)
 
     if api_key:
-        try:
-            genai.configure(api_key=api_key)
-            model = genai.GenerativeModel("gemini-1.5-flash", system_instruction=SYSTEM_PROMPT)
-            chat = model.start_chat(history=[])
-            response = chat.send_message(prompt_to_process)
-            bot_reply = response.text
-        except Exception as e:
-            bot_reply = f"❌ Error de conexión con Gemini API: {str(e)}"
+        genai.configure(api_key=api_key)
+        # Bucle con fallback de modelos para evitar errores 404 de versión
+        model_candidates = ["gemini-2.0-flash", "gemini-1.5-flash-latest", "gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro"]
+        bot_reply = None
+        last_err = None
+
+        for model_name in model_candidates:
+            try:
+                model = genai.GenerativeModel(model_name, system_instruction=SYSTEM_PROMPT)
+                response = model.generate_content(prompt_to_process)
+                if response and response.text:
+                    bot_reply = response.text
+                    break
+            except Exception as e:
+                last_err = e
+
+        if not bot_reply:
+            bot_reply = f"❌ Error de conexión con Gemini API: {str(last_err)}\n\n*Tip*: Verifica que tu API Key sea válida y esté activa en Google AI Studio."
     else:
         bot_reply = f"ℹ️ **Respuesta del Técnico (Modo demostración base de datos)**:\n\n"
         bot_reply += f"Para consultas libres con la IA, ingresa tu API Key en la barra izquierda.\n\n"
